@@ -157,9 +157,7 @@ def get_inventory():
     sql = """
     SELECT MATNR AS "Part", SUM(LABST) AS "StockQty"
     FROM SAPHANADB.NSDM_V_MARD
-    WHERE WERKS='3111'
-      AND LGORT='0001'
-      AND MANDT='800'
+    WHERE WERKS='3111' AND LGORT='0001'
     GROUP BY MATNR
     """
     with pyodbc.connect(DSN) as conn:
@@ -264,17 +262,18 @@ def export_excel(df):
     detail_df.to_excel(writer, "Details", index=False)
 
     # -------------------------------------------------------
-    # 📊 Summary_No_Sea / Summary_With_Sea（去掉 Part 以 D14 开头）
+    # 📊 Summary_No_Sea
     # -------------------------------------------------------
-    summary_df = df[~df["Part"].astype(str).str.strip().str.upper().str.startswith("D14")].copy()
-
     build_summary(
-        summary_df[summary_df["Is_Sea"] == "NO"],
+        df[df["Is_Sea"] == "NO"],
         inventory_df
     ).to_excel(writer, "Summary_No_Sea", index=False)
 
+    # -------------------------------------------------------
+    # 📊 Summary_With_Sea
+    # -------------------------------------------------------
     build_summary(
-        summary_df,
+        df,
         inventory_df
     ).to_excel(writer, "Summary_With_Sea", index=False)
 
@@ -336,12 +335,9 @@ def export_excel(df):
     kanban_summary.to_excel(writer, "Kanban_Analysis", index=False)
 
     # -------------------------------------------------------
-    # 📦 Open_PO_Details（去掉 Part 以 D14 开头）
+    # 📦 Open_PO_Details
     # -------------------------------------------------------
-    open_po_filtered_df = open_po_df[
-        ~open_po_df["Part"].astype(str).str.strip().str.upper().str.startswith("D14")
-    ].copy()
-    open_po_filtered_df.to_excel(writer, "Open_PO_Details", index=False)
+    open_po_df.to_excel(writer, "Open_PO_Details", index=False)
 
     writer.close()
 
