@@ -171,11 +171,12 @@ def get_inventory():
 def get_open_po_details():
     sql = """
     SELECT
-        ekpo."EBELN",
+        ekpo."EBELN"               AS "PO Number",
         ekpo."EBELP",
         ekpo."MATNR"               AS "Part",
         ekpo."TXZ01"               AS "Description",
         ekko."LIFNR"               AS "Vendor",
+        lfa1."NAME1"               AS "VendorName",
         ekko."EKGRP"               AS "PurchasingGroup",
         ekko."BEDAT"               AS "OrderDate",
         eket."EINDT"               AS "DeliveryDate",
@@ -188,6 +189,9 @@ def get_open_po_details():
      AND ekpo."EBELP" = eket."EBELP"
     JOIN SAPHANADB.EKKO ekko
       ON ekpo."EBELN" = ekko."EBELN"
+    LEFT JOIN SAPHANADB.LFA1 lfa1
+      ON ekko."LIFNR" = lfa1."LIFNR"
+     AND lfa1."MANDT" = '800'
     WHERE ekpo."WERKS"='3111'
       AND ekpo."MANDT"='800'
       AND eket."MANDT"='800'
