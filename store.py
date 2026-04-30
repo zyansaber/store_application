@@ -157,7 +157,9 @@ def get_inventory():
     sql = """
     SELECT MATNR AS "Part", SUM(LABST) AS "StockQty"
     FROM SAPHANADB.NSDM_V_MARD
-    WHERE WERKS='3111' AND LGORT='0001'
+    WHERE WERKS='3111'
+      AND LGORT='0001'
+      AND MANDT='800'
     GROUP BY MATNR
     """
     with pyodbc.connect(DSN) as conn:
@@ -174,6 +176,7 @@ def get_open_po_details():
         ekpo."MATNR"               AS "Part",
         ekpo."TXZ01"               AS "Description",
         ekko."LIFNR"               AS "Vendor",
+        ekko."EKGRP"               AS "PurchasingGroup",
         ekko."BEDAT"               AS "OrderDate",
         eket."EINDT"               AS "DeliveryDate",
         eket."MENGE"               AS "OrderQty",
@@ -189,8 +192,11 @@ def get_open_po_details():
       AND ekpo."MANDT"='800'
       AND eket."MANDT"='800'
       AND ekko."MANDT"='800'
+      AND ekpo."EBELN" NOT LIKE '70000%'
+      AND COALESCE(ekko."LOEKZ",'') <> 'L'
       AND COALESCE(ekpo."LOEKZ",'') <> 'L'
       AND COALESCE(ekpo."ELIKZ",'') <> 'X'
+      AND COALESCE(eket."MENGE",0) > 0
       AND (eket."MENGE" - COALESCE(eket."WEMNG",0)) > 0
     """
     with pyodbc.connect(DSN) as conn:
@@ -262,18 +268,17 @@ def export_excel(df):
     detail_df.to_excel(writer, "Details", index=False)
 
     # -------------------------------------------------------
-    # 📊 Summary_No_Sea
+    # 📊 Summary_No_Sea / Summary_With_Sea（去掉 Part 以 D14 开头）
     # -------------------------------------------------------
+    summary_df = df[~df["Part"].astype(str).str.strip().str.upper().str.startswith("D14")].copy()
+
     build_summary(
-        df[df["Is_Sea"] == "NO"],
+        summary_df[summary_df["Is_Sea"] == "NO"],
         inventory_df
     ).to_excel(writer, "Summary_No_Sea", index=False)
 
-    # -------------------------------------------------------
-    # 📊 Summary_With_Sea
-    # -------------------------------------------------------
     build_summary(
-        df,
+        summary_df,
         inventory_df
     ).to_excel(writer, "Summary_With_Sea", index=False)
 
@@ -335,9 +340,12 @@ def export_excel(df):
     kanban_summary.to_excel(writer, "Kanban_Analysis", index=False)
 
     # -------------------------------------------------------
-    # 📦 Open_PO_Details
+    # 📦 Open_PO_Details（去掉 Part 以 D14 开头）
     # -------------------------------------------------------
-    open_po_df.to_excel(writer, "Open_PO_Details", index=False)
+    open_po_filtered_df = open_po_df[
+        ~open_po_df["Part"].astype(str).str.strip().str.upper().str.startswith("D14")
+    ].copy()
+    open_po_filtered_df.to_excel(writer, "Open_PO_Details", index=False)
 
     writer.close()
 
